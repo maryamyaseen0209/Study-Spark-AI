@@ -6,11 +6,9 @@ backend/node_modules/
 # Environment variables and local secrets
 .env
 .env.*
-!.env.example
 frontend/.env
 .env.example
 frontend/.env.*
-!frontend/.env.example
 backend/.env
 backend/.env.*
 backend/.env.example
