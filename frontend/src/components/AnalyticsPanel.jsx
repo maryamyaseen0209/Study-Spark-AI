@@ -35,13 +35,19 @@ export default function AnalyticsPanel({ role, analytics = {} }) {
 
   const exportData = async (format = 'json') => {
     try {
-      const res = await api.get(`/dashboard/analytics/export?format=${format}`, { responseType: format === 'csv' ? 'blob' : 'json' });
+      const res = await api.get(`/dashboard/analytics/export?format=${format}`, { responseType: 'blob' });
       if (format === 'csv') {
         downloadBlob(res.data, 'study-sparkai-analytics.csv', 'text/csv');
         setExportState('CSV analytics report downloaded.');
         return;
       }
-      setExportState(res.data.message || 'Export prepared.');
+      if (format === 'pdf') {
+        downloadBlob(res.data, 'study-sparkai-analytics.pdf', 'application/pdf');
+        setExportState('PDF analytics report downloaded.');
+        return;
+      }
+      downloadBlob(res.data, 'study-sparkai-analytics.json', 'application/json');
+      setExportState('JSON analytics report downloaded.');
     } catch (error) {
       setExportState(getApiErrorMessage(error, 'Unable to prepare export.'));
     }

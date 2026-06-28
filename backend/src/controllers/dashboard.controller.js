@@ -52,15 +52,15 @@ export const exportAnalytics = asyncHandler(async (req, res) => {
     return res.send(toCsv(rows));
   }
 
-  res.json({
-    success: true,
-    message: format === 'csv'
-      ? 'CSV-ready analytics report prepared. File streaming can be connected in production.'
-      : format === 'pdf'
-        ? 'PDF export placeholder prepared. Add a PDF renderer dependency such as pdfkit or puppeteer to stream a formatted report.'
-        : 'Analytics export prepared successfully.',
-    export: format === 'pdf' ? { ...report, configurationRequired: true, dependency: 'pdfkit-or-puppeteer' } : report,
-  });
+  if (format === 'pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="study-sparkai-${req.user.role}-analytics.pdf"`);
+    return res.send(toPdf(report));
+  }
+
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="study-sparkai-${req.user.role}-analytics.json"`);
+  res.json({ success: true, message: 'Analytics export downloaded successfully.', export: report });
 });
 
 export const getLeaderboard = asyncHandler(async (req, res) => {
@@ -131,7 +131,7 @@ export const getReportOverview = asyncHandler(async (req, res) => {
         leaderboard: dashboard.analytics?.leaderboard || [],
       },
       recommendations: dashboard.analytics?.recommendations || dashboard.analytics?.smartInsights || [],
-      exportFormats: dashboard.analytics?.exportFormats || ['json', 'csv', 'pdf-placeholder'],
+      exportFormats: dashboard.analytics?.exportFormats || ['json', 'csv', 'pdf'],
     },
   });
 });
@@ -262,7 +262,7 @@ async function getStudentDashboard(userId) {
       activityHeatmap,
       learningVelocity,
       reportSummary,
-      exportFormats: ['json', 'csv', 'pdf-placeholder'],
+      exportFormats: ['json', 'csv', 'pdf'],
     },
     actions: ['Generate Assignment', 'Join Classroom', 'Take Quiz', 'Open AI Chat'],
     modules: ['Personalized dashboard', 'Classroom joining', 'Quiz taking', 'Progress analytics', 'Gamification'],
@@ -414,7 +414,7 @@ async function getTeacherDashboard(userId) {
       classTrend,
       engagementSummary,
       reportSummary: engagementSummary,
-      exportFormats: ['json', 'csv', 'pdf-placeholder'],
+      exportFormats: ['json', 'csv', 'pdf'],
     },
     actions: ['Create Classroom', 'Generate Quiz from PDF', 'Monitor Students', 'Send Announcement'],
     modules: ['Classroom management', 'AI quiz generator', 'Student monitoring', 'Messaging', 'Resources'],
@@ -518,7 +518,7 @@ async function getAdminDashboard() {
         { label: 'Active users', value: activeUsers, status: '7 day activity' },
         { label: 'Platform pass rate', value: `${Math.round((platformAverage.passRate || 0) * 100)}%`, status: 'Learning health' },
       ],
-      exportFormats: ['json', 'csv', 'pdf-placeholder'],
+      exportFormats: ['json', 'csv', 'pdf'],
     },
     totalAssignments,
     lastUpdated: new Date().toISOString(),
@@ -586,6 +586,41 @@ function toCsv(rows) {
   }, new Set()));
   const escape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
   return [headers.join(','), ...rows.map((row) => headers.map((header) => escape(row[header])).join(','))].join('\n');
+}
+
+function toPdf(report) {
+  const rows = report.rows.length ? report.rows : [{ type: 'summary', name: 'No analytics rows available', value: '' }];
+  const lines = [
+    'StudySparkAI Analytics Report',
+    `Role: ${report.role}`,
+    `Generated: ${report.generatedAt}`,
+    '',
+    ...rows.slice(0, 35).map((row) => Object.entries(row).map(([key, value]) => `${key}: ${value ?? ''}`).join(' | ')),
+  ];
+  return buildSimplePdf(lines);
+}
+
+function buildSimplePdf(lines) {
+  const escapePdf = (value) => String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const content = ['BT', '/F1 12 Tf', '50 780 Td', '14 TL', ...lines.map((line, index) => `${index ? 'T* ' : ''}(${escapePdf(line).slice(0, 105)}) Tj`), 'ET'].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf, 'utf8'));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n `).join('\n');
+  pdf += `\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(pdf, 'utf8');
 }
 
 function buildStudentRecommendations({ averageScore, attempts, assignments, subjects }) {

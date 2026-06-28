@@ -103,23 +103,23 @@ export default function AssignmentPanel({ role }) {
 
       {response.message && <div className="mt-5"><SystemAlert type={response.type} message={response.message} /></div>}
 
-      <form onSubmit={generateAssignment} className="mt-5 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+      <form onSubmit={generateAssignment} className="mt-5 rounded-2xl border border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/60 p-4 dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/20">
         <div className="grid gap-3 md:grid-cols-[1fr_150px_180px]">
           <input name="topic" value={form.topic} onChange={updateForm} className="input" placeholder="Assignment topic" required minLength={3} />
           <input name="wordCount" value={form.wordCount} onChange={updateForm} className="input" type="number" min="500" max="2000" step="100" />
           <select name="difficulty" value={form.difficulty} onChange={updateForm} className="input"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
         </div>
-        <label className="mt-3 flex cursor-pointer flex-col gap-2 rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
-          <span className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-spark-300" /> Upload PDF, DOCX, TXT, MD, or CSV for source-based AI writing</span>
-          <input type="file" name="document" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/*" onChange={updateForm} className="text-sm text-slate-300 file:mr-3 file:rounded-full file:border-0 file:bg-spark-500 file:px-4 file:py-2 file:text-sm file:font-bold file:text-slate-950" />
+        <label className="mt-3 flex cursor-pointer flex-col gap-2 rounded-2xl border border-slate-300/80 bg-slate-50/90 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-spark-500" /> Upload PDF, DOCX, TXT, MD, or CSV for source-based AI writing</span>
+          <input type="file" name="document" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/*" onChange={updateForm} className="text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-spark-500 file:px-4 file:py-2 file:text-sm file:font-bold file:text-slate-950" />
         </label>
-        {form.document && <p className="mt-2 text-xs font-bold text-spark-200">Selected source: {form.document.name}</p>}
-        <label className="mt-3 flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" name="references" checked={form.references} onChange={updateForm} /> Include references section</label>
+        {form.document && <p className="mt-2 text-xs font-bold text-spark-600 dark:text-spark-200">Selected source: {form.document.name}</p>}
+        <label className="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300"><input type="checkbox" name="references" checked={form.references} onChange={updateForm} /> Include references section</label>
         <button disabled={busy} className="btn-primary mt-4 gap-2"><Sparkles className="h-4 w-4" /> {busy ? 'Generating...' : 'Generate assignment'}</button>
       </form>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        {assignments.map((assignment) => <article key={assignment._id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black text-white">{assignment.topic}</h3><p className="mt-1 text-sm text-slate-400">{assignment.wordCount} words - {assignment.difficulty} - {assignment.generationMetadata?.model}</p></div><div className="flex items-center gap-2"><button type="button" disabled={busy} onClick={() => copyAssignment(assignment)} className="btn-secondary px-3 py-2 text-spark-100" title="Copy assignment">{copiedId === assignment._id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><button disabled={busy} onClick={() => deleteAssignment(assignment._id)} className="btn-secondary px-3 py-2 text-rose-200"><Trash2 className="h-4 w-4" /></button></div></div><pre className="mt-4 max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-black/20 p-4 text-sm leading-6 text-slate-300">{flattenContent(assignment.content)}</pre></article>)}
+        {assignments.map((assignment) => <article key={assignment._id} className="rounded-2xl border border-slate-200/80 bg-slate-50 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/60"><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black text-slate-900 dark:text-white">{assignment.topic}</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{assignment.wordCount} words - {assignment.difficulty} - {assignment.generationMetadata?.model}</p></div><div className="flex items-center gap-2"><button type="button" disabled={busy} onClick={() => copyAssignment(assignment)} className="btn-secondary px-3 py-2 text-spark-900 dark:text-spark-100" title="Copy assignment">{copiedId === assignment._id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><button disabled={busy} onClick={() => deleteAssignment(assignment._id)} className="btn-secondary px-3 py-2 text-rose-600 dark:text-rose-200"><Trash2 className="h-4 w-4" /></button></div></div><pre className="mt-4 max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-100/80 p-4 text-sm leading-6 text-slate-700 dark:bg-black/20 dark:text-slate-300">{flattenContent(assignment.content)}</pre></article>)}
         {assignments.length === 0 && <FieldError message="No assignments yet. Generate your first AI draft above." />}
       </div>
     </section>

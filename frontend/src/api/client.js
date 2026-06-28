@@ -17,6 +17,10 @@ export function storeTokens(tokens) {
   else sessionStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+export function hasStoredRefreshToken() {
+  return Boolean(getStoredTokens()?.refreshToken);
+}
+
 export function getApiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
   const data = error?.response?.data;
   if (data?.details?.length) return data.details.map((item) => item.msg || item.message).filter(Boolean).join(' ');
@@ -43,9 +47,18 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry && !isRefreshRequest && !isLogoutRequest) {
       original._retry = true;
       const tokens = getStoredTokens();
-      const refreshResponse = await api.post('/auth/refresh', { refreshToken: tokens?.refreshToken });
-      storeTokens({ accessToken: refreshResponse.data.accessToken, refreshToken: refreshResponse.data.refreshToken });
-      return api(original);
+      if (!tokens?.refreshToken) {
+        storeTokens(null);
+        return Promise.reject(error);
+      }
+      try {
+        const refreshResponse = await api.post('/auth/refresh', { refreshToken: tokens.refreshToken });
+        storeTokens({ accessToken: refreshResponse.data.accessToken, refreshToken: refreshResponse.data.refreshToken });
+        return api(original);
+      } catch (refreshError) {
+        storeTokens(null);
+        return Promise.reject(refreshError);
+      }
     }
     return Promise.reject(error);
   }

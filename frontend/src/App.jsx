@@ -1,5 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { SocketProvider } from './context/SocketContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
@@ -7,6 +6,7 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -31,15 +31,13 @@ function ProtectedRoute({ children }) {
 }
 
 function AnimatedRoutes() {
-  const location = useLocation();
-
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes>
         <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
         <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
         <Route path="/reset-password" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
+        <Route path="/verify-email" element={<PageTransition><VerifyEmailPage /></PageTransition>} />
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <ErrorBoundary>
@@ -60,7 +58,6 @@ function AnimatedRoutes() {
         } />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-    </AnimatePresence>
   );
 }
 

@@ -30,8 +30,19 @@ const userSchema = new mongoose.Schema({
   },
   experiencePoints: { type: Number, default: 0 },
   badges: [{ badge: { type: mongoose.Schema.Types.ObjectId, ref: 'Badge' }, unlockedAt: Date }],
+  zoomOAuth: {
+    accessToken: { type: String, select: false },
+    refreshToken: { type: String, select: false },
+    expiresAt: Date,
+    zoomUserId: String,
+    email: String,
+    accountId: String,
+    connectedAt: Date,
+  },
   sessions: [sessionSchema],
   passwordResetVersion: { type: Number, default: 0 },
+  resetCodeHash: { type: String, select: false },
+  resetCodeExpiresAt: Date,
   suspension: { reason: String, expiresAt: Date },
 }, { timestamps: true });
 

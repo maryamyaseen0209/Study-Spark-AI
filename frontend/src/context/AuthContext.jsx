@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { api, getApiErrorMessage, getStoredTokens, storeTokens } from '../api/client.js';
+import { api, getApiErrorMessage, getStoredTokens, hasStoredRefreshToken, storeTokens } from '../api/client.js';
 
 const AuthContext = createContext(null);
 const USER_STORAGE_KEY = 'studySparkAI.user';
@@ -25,6 +25,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!hasStoredRefreshToken()) {
+      setUser(null);
+      storeUser(null);
+      setLoading(false);
+      return;
+    }
+
     api.get('/auth/me')
       .then((res) => {
         setUser(res.data.user);
@@ -40,13 +47,21 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     user,
     loading,
+    async startRegistration(payload) {
+      try {
+        const res = await api.post('/auth/register/start', payload);
+        return res.data;
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+        throw error;
+      }
+    },
     async register(payload) {
       try {
         const res = await api.post('/auth/register', payload);
         setUser(res.data.user);
         storeUser(res.data.user);
         storeTokens({ accessToken: res.data.accessToken, refreshToken: res.data.refreshToken });
-        toast.success(res.data.message);
         return res.data;
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -59,7 +74,6 @@ export function AuthProvider({ children }) {
         setUser(res.data.user);
         storeUser(res.data.user);
         storeTokens({ accessToken: res.data.accessToken, refreshToken: res.data.refreshToken });
-        toast.success(res.data.message || 'Welcome back');
         return res.data;
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -72,22 +86,25 @@ export function AuthProvider({ children }) {
       setUser(null);
       storeUser(null);
       storeTokens(null);
-      toast.success('Logged out');
     },
     async forgotPassword(email) {
       try {
         const res = await api.post('/auth/forgot-password', { email });
-        toast.success(res.data.message);
         return res.data;
       } catch (error) {
         toast.error(getApiErrorMessage(error));
         throw error;
       }
     },
-    async resetPassword(token, password) {
+    async resetPassword(tokenOrEmail, passwordOrCode, maybePassword) {
       try {
-        const res = await api.post('/auth/reset-password', { token, password });
-        toast.success(res.data.message);
+        let payload;
+        if (maybePassword !== undefined) {
+          payload = { email: tokenOrEmail, code: passwordOrCode, password: maybePassword };
+        } else {
+          payload = { token: tokenOrEmail, password: passwordOrCode };
+        }
+        const res = await api.post('/auth/reset-password', payload);
         return res.data;
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -99,7 +116,6 @@ export function AuthProvider({ children }) {
         const res = await api.patch('/auth/profile', payload);
         setUser(res.data.user);
         storeUser(res.data.user);
-        toast.success(res.data.message || 'Profile updated');
         return res.data;
       } catch (error) {
         toast.error(getApiErrorMessage(error, 'Unable to update profile.'));

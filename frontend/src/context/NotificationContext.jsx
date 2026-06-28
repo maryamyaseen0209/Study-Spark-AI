@@ -58,7 +58,6 @@ export function NotificationProvider({ children }) {
         notificationCache.unreadCount = nextCount;
         return nextCount;
       });
-      toast(notification.title || 'New notification');
     };
     socket.on('notification:new', onNotification);
     return () => socket.off('notification:new', onNotification);
@@ -89,7 +88,16 @@ export function NotificationProvider({ children }) {
     await api.patch('/notifications/read-all');
   }, []);
 
-  const value = useMemo(() => ({ notifications, unreadCount, loadNotifications, markRead, markAllRead }), [notifications, unreadCount, loadNotifications, markRead, markAllRead]);
+  const unreadByType = useMemo(() => notifications.reduce((counts, item) => {
+    if (item.readAt) return counts;
+    const type = item.type || '';
+    if (type.includes('message')) counts.messages += 1;
+    if (type.includes('quiz')) counts.quizzes += 1;
+    if (type.includes('meeting')) counts.meetings += 1;
+    return counts;
+  }, { messages: 0, quizzes: 0, meetings: 0 }), [notifications]);
+
+  const value = useMemo(() => ({ notifications, unreadCount, unreadByType, loadNotifications, markRead, markAllRead }), [notifications, unreadCount, unreadByType, loadNotifications, markRead, markAllRead]);
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }
 

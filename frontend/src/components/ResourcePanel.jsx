@@ -8,6 +8,12 @@ import { useSocket } from '../context/SocketContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const emptyForm = { classroomId: '', title: '', description: '', url: '', tags: '', file: null };
+const bytesToSize = (bytes = 0) => {
+  if (!bytes) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+};
 
 export default function ResourcePanel({ role, classroomId = '', embedded = false }) {
   const { socket } = useSocket() || {};
@@ -20,6 +26,7 @@ export default function ResourcePanel({ role, classroomId = '', embedded = false
   const [filters, setFilters] = useState({ search: '', type: 'all', classroomId });
   const [busyId, setBusyId] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [response, setResponse] = useState({ type: 'loading', message: 'Loading resources...' });
   const canModerate = role === 'teacher' || role === 'admin';
   const canShare = role === 'teacher';
@@ -62,14 +69,22 @@ export default function ResourcePanel({ role, classroomId = '', embedded = false
     const payload = new FormData();
     Object.entries({ ...form, classroomId: classroomId || form.classroomId }).forEach(([key, value]) => { if (value) payload.append(key, value); });
     try {
-      const res = await api.post('/resources', payload, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setUploadProgress(form.file ? 1 : 0);
+      const res = await api.post('/resources', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (event) => {
+          if (event.total) setUploadProgress(Math.round((event.loaded * 100) / event.total));
+        },
+      });
       setResources((items) => [res.data.resource, ...items]);
       setForm({ ...emptyForm, classroomId });
       setShowCreateForm(false);
       setResponse({ type: 'success', message: res.data.message });
-      toast.success('Resource shared');
+      toast.success(res.data.resource?.storageProvider === 'cloudinary' ? 'Resource uploaded to Cloudinary' : 'Resource shared');
     } catch (error) {
       setResponse({ type: 'error', message: getApiErrorMessage(error) });
+    } finally {
+      setUploadProgress(0);
     }
   };
 
@@ -88,7 +103,8 @@ export default function ResourcePanel({ role, classroomId = '', embedded = false
   };
 
   const openResource = async (resource, kind = 'preview') => {
-    await api.post(`/resources/${resource._id}/view`, { kind }).catch(() => {});
+    const { data } = await api.post(`/resources/${resource._id}/view`, { kind }).catch(() => ({ data: null }));
+    if (data?.resource) setResources((items) => items.map((item) => (item._id === resource._id ? data.resource : item)));
     window.open(resource.url, '_blank', 'noopener,noreferrer');
   };
 
@@ -141,6 +157,8 @@ export default function ResourcePanel({ role, classroomId = '', embedded = false
         <input name="url" value={form.url} onChange={updateForm} className="input" placeholder="Optional link URL" />
         <input name="file" onChange={updateForm} className="input" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.webp,.mp4" />
         <button className="btn-primary gap-2"><FileUp className="h-4 w-4" /> Share resource</button>
+        {form.file && <p className="text-xs font-bold text-cyan-200 md:col-span-2 xl:col-span-3">Selected for Cloudinary/local upload: {form.file.name} {bytesToSize(form.file.size) && `(${bytesToSize(form.file.size)})`}</p>}
+        {uploadProgress > 0 && <div className="h-2 overflow-hidden rounded-full bg-white/10 md:col-span-2 xl:col-span-3"><div className="h-full bg-cyan-400 transition-all" style={{ width: `${uploadProgress}%` }} /></div>}
         <textarea name="description" value={form.description} onChange={updateForm} className="input md:col-span-2 xl:col-span-3" placeholder="Describe how students should use this resource" />
       </form>}
 
@@ -154,8 +172,8 @@ export default function ResourcePanel({ role, classroomId = '', embedded = false
         {resources.map((resource) => (
           <article key={resource._id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
             <div className="flex items-start justify-between gap-3">
-              <div><h3 className="text-xl font-black text-white">{resource.pinned && <Pin className="mr-2 inline h-4 w-4 text-amber-300" />}{resource.title}</h3><p className="mt-1 text-sm text-slate-400">{resource.classroom?.name} - {resource.type} - shared by {resource.uploadedBy?.fullName || 'User'}</p></div>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase text-slate-200">{resource.storageProvider}</span>
+              <div><h3 className="text-xl font-black text-white">{resource.pinned && <Pin className="mr-2 inline h-4 w-4 text-amber-300" />}{resource.title}</h3><p className="mt-1 text-sm text-slate-400">{resource.classroom?.name} - {resource.type} - shared by {resource.uploadedBy?.fullName || 'User'}</p>{resource.originalName && <p className="mt-1 text-xs text-slate-500">{resource.originalName} {bytesToSize(resource.size) && `- ${bytesToSize(resource.size)}`}</p>}</div>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${resource.storageProvider === 'cloudinary' ? 'bg-cyan-500/15 text-cyan-200' : 'bg-white/10 text-slate-200'}`}>{resource.storageProvider}</span>
             </div>
             {resource.description && <p className="mt-3 text-sm leading-6 text-slate-300">{resource.description}</p>}
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">{(resource.tags || []).map((tag) => <span key={tag} className="rounded-full bg-white/10 px-2 py-1">#{tag}</span>)}</div>

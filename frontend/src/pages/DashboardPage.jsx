@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Activity, Bell, BookOpen, FolderOpen, GraduationCap, LogOut, ShieldCheck, Sparkles, UserCircle } from 'lucide-react';
+import { Activity, Bell, BookOpen, FolderOpen, GraduationCap, LogOut, Menu, ShieldCheck, Sparkles, UserCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getApiErrorMessage } from '../api/client.js';
 import AnalyticsPanel from '../components/AnalyticsPanel.jsx';
+import AdminSuitePanel from '../components/AdminSuitePanel.jsx';
 import AssignmentPanel from '../components/AssignmentPanel.jsx';
+import BrandLogo from '../components/BrandLogo.jsx';
 import ClassroomPanel from '../components/ClassroomPanel.jsx';
 import MessagingPanel from '../components/MessagingPanel.jsx';
+import MeetingPanel from '../components/MeetingPanel.jsx';
 import NotificationCenter from '../components/NotificationCenter.jsx';
 import QuizPanel from '../components/QuizPanel.jsx';
 import ResourcePanel from '../components/ResourcePanel.jsx';
 import StatCard from '../components/StatCard.jsx';
 import ProfileDropdown from '../components/ProfileDropdown.jsx';
 import ThemeToggle from '../components/ThemeToggle.jsx';
+import SiteFooter from '../components/SiteFooter.jsx';
 import { DashboardSkeleton } from '../components/Skeleton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNotifications } from '../context/NotificationContext.jsx';
@@ -27,10 +31,11 @@ const dashboardCopy = {
 
 export default function DashboardPage() {
   const { user, logout, updateProfile } = useAuth();
-  const { unreadCount = 0 } = useNotifications() || {};
+  const { unreadCount = 0, unreadByType = {} } = useNotifications() || {};
   const { section = 'home' } = useParams();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({ fullName: '', institution: '', bio: '', theme: 'system', language: 'en', emailNotifications: true });
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -80,52 +85,104 @@ export default function DashboardPage() {
     { id: 'home', label: 'Dashboard' },
     { id: 'classrooms', label: 'Classrooms' },
     ...(user?.role === 'student' ? [{ id: 'assignments', label: 'Assignments' }] : []),
-    { id: 'quizzes', label: 'AI Quizzes' },
+    { id: 'quizzes', label: 'AI Quizzes', badge: unreadByType.quizzes },
     { id: 'analytics', label: user?.role === 'student' ? 'Progress' : 'Analytics' },
-    { id: 'messages', label: user?.role === 'student' ? 'Chat' : 'Messages' },
+    { id: 'resources', label: 'Resources' },
+    { id: 'meetings', label: 'Meetings', badge: unreadByType.meetings },
+    ...(user?.role === 'admin' ? [{ id: 'admin', label: 'Admin Suite' }] : []),
+    { id: 'messages', label: user?.role === 'student' ? 'Chat' : 'Messages', badge: unreadByType.messages },
     { id: 'notifications', label: 'Notifications' },
-  ], [user?.role]);
+  ], [user?.role, unreadByType.messages, unreadByType.meetings, unreadByType.quizzes]);
   const routeSections = [...navItems, { id: 'profile' }, { id: 'settings' }];
   const activeSection = routeSections.some((item) => item.id === section) ? section : 'home';
+  const DashboardIcon = dashboardCopy[user?.role]?.icon || Activity;
+  const dashboardAccent = dashboardCopy[user?.role]?.accent || 'from-blue-500 to-indigo-500';
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 px-4 py-6 sm:px-6 lg:px-8 transition-colors duration-300">
+    <main className="aurora-bg min-h-screen px-2 py-3 transition-colors duration-500 sm:px-4 sm:py-5 lg:px-8 lg:py-6">
       <section className="mx-auto max-w-7xl">
         {/* Navbar */}
         <motion.nav
           variants={fadeIn}
           initial="hidden"
           animate="visible"
-          className="mb-6 flex flex-col gap-3 rounded-2xl bg-white dark:bg-slate-800/90 p-4 shadow-lg shadow-slate-200/50 dark:shadow-black/20 border border-slate-200 dark:border-slate-700/50 lg:flex-row lg:items-center lg:justify-between transition-colors duration-300"
+          className="glass-panel sticky top-3 z-40 mb-4 p-2.5 sm:top-4 sm:mb-6 sm:p-4"
         >
-          <Link to="/dashboard" className="flex items-center gap-2 text-lg font-black text-slate-900 dark:text-white">
-            <Sparkles className="h-5 w-5 text-blue-500" /> Study SparkAI
-          </Link>
-          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
-            {navItems.map((item) => (
-              <Link
-                key={item.id}
-                className={`rounded-full px-4 py-2 transition-all duration-200 ${
-                  activeSection === item.id
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25'
-                    : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                }`}
-                to={item.id === 'home' ? '/dashboard' : `/dashboard/${item.id}`}
-              >
-                <span className="relative inline-flex items-center">
-                  {item.id === 'notifications' && <Bell className={`mr-1 h-4 w-4 ${unreadCount > 0 ? 'animate-pulse text-red-500' : ''}`} />}
-                  {item.label}
-                  {item.id === 'notifications' && unreadCount > 0 && (
-                    <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white shadow-lg shadow-red-500/30 ring-2 ring-red-200 dark:ring-red-400/40">{unreadCount > 99 ? '99+' : unreadCount}</span>
-                  )}
-                </span>
-              </Link>
-            ))}
-            <div className="flex items-center gap-3 ml-2 pl-3 border-l border-slate-200 dark:border-slate-700">
+          <div className="flex items-center justify-between gap-3 xl:hidden">
+            <BrandLogo compact markOnly />
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-700/60 sm:h-10 sm:w-10 xl:hidden"
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((open) => !open)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5 stroke-[3]" />}
+            </button>
+          </div>
+          <div className={`${mobileMenuOpen ? 'mt-3 flex' : 'hidden'} flex-col gap-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 sm:gap-2 xl:mt-0 xl:flex xl:flex-row xl:flex-nowrap xl:items-center xl:justify-between xl:gap-3`}>
+            <BrandLogo compact markOnly className="mb-2 hidden shrink-0 xl:flex xl:mb-0" />
+            <div className="flex flex-col gap-1.5 sm:gap-2 xl:min-w-0 xl:flex-1 xl:flex-row xl:flex-nowrap xl:items-center xl:justify-end xl:overflow-hidden xl:whitespace-nowrap">
+              {navItems.map((item) => (
+                <Link
+                  key={item.id}
+                  className={`rounded-xl px-3 py-2 transition-all duration-200 sm:px-4 xl:shrink-0 xl:rounded-full xl:px-3 ${activeSection === item.id
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                    }`}
+                  to={item.id === 'home' ? '/dashboard' : `/dashboard/${item.id}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="relative inline-flex items-center">
+                    {item.id === 'notifications' && <Bell className={`mr-1 h-4 w-4 ${unreadCount > 0 ? 'animate-pulse text-red-500' : ''}`} />}
+                    {item.label}
+                    {item.id === 'notifications' && unreadCount > 0 && (
+                      <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white shadow-lg shadow-red-500/30 ring-2 ring-red-200 dark:ring-red-400/40">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                    )}
+                    {item.id !== 'notifications' && item.badge > 0 && (
+                      <span className="ml-2 inline-flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/40 ring-2 ring-red-100 dark:ring-red-400/30" aria-label="New items" />
+                    )}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700 xl:ml-2 xl:mt-0 xl:shrink-0 xl:justify-start xl:border-l xl:border-t-0 xl:pl-3 xl:pt-0">
               <ThemeToggle />
               <ProfileDropdown />
             </div>
           </div>
         </motion.nav>
+
+        <motion.header
+          variants={slideUp}
+          initial="hidden"
+          animate="visible"
+          className="glass-panel relative overflow-hidden p-5 sm:p-6"
+        >
+          <div className={`absolute right-[-3rem] top-[-4rem] h-44 w-44 rounded-full bg-gradient-to-br ${dashboardAccent} opacity-20 blur-3xl`} />
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <motion.div whileHover={{ rotate: 8, scale: 1.05 }} className={`rounded-2xl bg-gradient-to-br ${dashboardAccent} p-3 text-white shadow-lg shadow-blue-500/20`}>
+                <DashboardIcon className="h-7 w-7" />
+              </motion.div>
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-blue-700 dark:border-white/10 dark:bg-white/10 dark:text-blue-200">
+                  <Sparkles className="h-3.5 w-3.5" /> Live workspace
+                </div>
+                <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+                  {dashboardCopy[user?.role]?.title || 'Dashboard'}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Welcome back, {user?.fullName || 'learner'}. Manage learning, collaboration, resources, and insights from one polished workspace.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:flex">
+              <Link to="/dashboard/profile" className="btn-secondary px-4 py-2 text-sm">View profile</Link>
+              <Link to="/dashboard/notifications" className="btn-primary px-4 py-2 text-sm">Notifications</Link>
+            </div>
+          </div>
+        </motion.header>
 
         {/* Dashboard Home */}
         {activeSection === 'home' && (
@@ -152,7 +209,7 @@ export default function DashboardPage() {
                 variants={slideUp}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 rounded-2xl bg-white dark:bg-slate-800/90 p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 sm:p-6 transition-colors duration-300"
+                className="card mt-6"
               >
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">User Breakdown</h2>
                 <div className="grid gap-4 sm:grid-cols-4">
@@ -185,7 +242,7 @@ export default function DashboardPage() {
                 variants={slideUp}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 rounded-2xl bg-white dark:bg-slate-800/90 p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 sm:p-6 transition-colors duration-300"
+                className="card mt-6"
               >
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Usage Trend (Last 7 Days)</h2>
                 <div className="flex items-end gap-2 h-32">
@@ -215,7 +272,7 @@ export default function DashboardPage() {
                 variants={slideUp}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 rounded-2xl bg-white dark:bg-slate-800/90 p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 sm:p-6 transition-colors duration-300"
+                className="card mt-6"
               >
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Classroom Performance</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -250,7 +307,7 @@ export default function DashboardPage() {
                 variants={slideUp}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 rounded-2xl bg-white dark:bg-slate-800/90 p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 sm:p-6 transition-colors duration-300"
+                className="card mt-6"
               >
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Recent Quiz Attempts</h2>
                 <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -285,7 +342,7 @@ export default function DashboardPage() {
                 variants={slideUp}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 rounded-2xl bg-white dark:bg-slate-800/90 p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 sm:p-6 transition-colors duration-300"
+                className="card mt-6"
               >
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Performance Trend</h2>
                 <div className="flex items-end gap-2 h-32">
@@ -309,19 +366,31 @@ export default function DashboardPage() {
         )}
 
         {/* Section Panels */}
-        {activeSection === 'classrooms' && <ClassroomPanel role={user?.role} />}
-        {activeSection === 'assignments' && <AssignmentPanel role={user?.role} />}
-        {activeSection === 'quizzes' && <QuizPanel role={user?.role} />}
-        {activeSection === 'analytics' && <AnalyticsPanel role={user?.role} analytics={dashboard?.analytics || {}} />}
-        {activeSection === 'resources' && <ResourcePanel role={user?.role} />}
-        {activeSection === 'messages' && <MessagingPanel />}
-        {activeSection === 'notifications' && <NotificationCenter />}
+        <motion.div
+          key={activeSection}
+          variants={slideUp}
+          initial="hidden"
+          animate="visible"
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25 }}
+          className="mt-6"
+        >
+          {activeSection === 'classrooms' && <ClassroomPanel role={user?.role} />}
+          {activeSection === 'assignments' && <AssignmentPanel role={user?.role} />}
+          {activeSection === 'quizzes' && <QuizPanel role={user?.role} />}
+          {activeSection === 'analytics' && <AnalyticsPanel role={user?.role} analytics={dashboard?.analytics || {}} />}
+          {activeSection === 'admin' && user?.role === 'admin' && <AdminSuitePanel />}
+          {activeSection === 'resources' && <ResourcePanel role={user?.role} />}
+          {activeSection === 'meetings' && <MeetingPanel role={user?.role} />}
+          {activeSection === 'messages' && <MessagingPanel />}
+          {activeSection === 'notifications' && <NotificationCenter />}
+        </motion.div>
         {activeSection === 'profile' && (
           <motion.div
             variants={slideUp}
             initial="hidden"
             animate="visible"
-            className="mt-6 rounded-2xl bg-white dark:bg-slate-800/90 p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 sm:p-6 transition-colors duration-300"
+            className="card mt-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <UserCircle className="text-blue-500" />
@@ -387,7 +456,7 @@ export default function DashboardPage() {
             variants={slideUp}
             initial="hidden"
             animate="visible"
-            className="mt-6 rounded-2xl bg-white p-5 shadow-lg border border-slate-200 dark:border-slate-700/50 dark:bg-slate-800/90 sm:p-6 transition-colors duration-300"
+            className="card mt-6"
           >
             <div className="flex items-center gap-3 mb-5">
               <Bell className="text-blue-500" />
@@ -428,6 +497,7 @@ export default function DashboardPage() {
             </form>
           </motion.div>
         )}
+        <SiteFooter />
       </section>
     </main>
   );

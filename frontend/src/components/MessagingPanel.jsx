@@ -74,7 +74,6 @@ export default function MessagingPanel({ classroom = null, embedded = false }) {
         const fromSelf = String(message.sender?._id || message.sender) === String(user?._id);
         return { ...item, lastMessage: message, unreadCount: belongsToActive || fromSelf ? item.unreadCount || 0 : (item.unreadCount || 0) + 1 };
       }));
-      toast.success('New message received');
     };
     const onRead = ({ readerId, classroomId }) => {
       setMessages((items) => items.map((message) => {
@@ -129,7 +128,6 @@ export default function MessagingPanel({ classroom = null, embedded = false }) {
       const res = await api.patch(`/messages/${messageId}/moderate`, { status, reason: moderationReason });
       setMessages((items) => items.map((item) => (item._id === messageId ? res.data.message : item)));
       setModerationReason('');
-      toast.success(`Message marked ${status}`);
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Unable to moderate message.'));
     }

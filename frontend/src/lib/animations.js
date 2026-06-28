@@ -6,6 +6,8 @@
 export const fadeIn = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
   exit: { opacity: 0 },
   transition: { duration: 0.35, ease: 'easeOut' },
 };
@@ -13,6 +15,8 @@ export const fadeIn = {
 export const slideUp = {
   initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -12 },
   transition: { duration: 0.4, ease: 'easeOut' },
 };
@@ -20,6 +24,8 @@ export const slideUp = {
 export const slideDown = {
   initial: { opacity: 0, y: -12 },
   animate: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: -12 },
+  visible: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -8 },
   transition: { duration: 0.3, ease: 'easeOut' },
 };
@@ -27,12 +33,22 @@ export const slideDown = {
 export const scaleIn = {
   initial: { opacity: 0, scale: 0.92 },
   animate: { opacity: 1, scale: 1 },
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: { opacity: 1, scale: 1 },
   exit: { opacity: 0, scale: 0.88 },
   transition: { duration: 0.3, ease: 'easeOut' },
 };
 
 export const staggerContainer = {
+  hidden: {},
+  initial: {},
   animate: {
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.08,
+    },
+  },
+  visible: {
     transition: {
       staggerChildren: 0.06,
       delayChildren: 0.08,
@@ -43,6 +59,8 @@ export const staggerContainer = {
 export const staggerItem = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
   transition: { duration: 0.35, ease: 'easeOut' },
 };
 
@@ -59,10 +77,19 @@ export const shimmer = {
 };
 
 export const pageTransition = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.3, ease: 'easeInOut' },
+  initial: { opacity: 0, y: 12, filter: 'blur(8px)' },
+  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  exit: { opacity: 0, y: -10, filter: 'blur(6px)' },
+  transition: { duration: 0.38, ease: 'easeInOut' },
+};
+
+export const floatingOrb = {
+  animate: {
+    y: [0, -18, 0],
+    x: [0, 10, 0],
+    scale: [1, 1.04, 1],
+    transition: { duration: 8, repeat: Infinity, ease: 'easeInOut' },
+  },
 };
 
 export const sidebarAnimation = {

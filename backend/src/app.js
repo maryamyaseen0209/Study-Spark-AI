@@ -25,6 +25,7 @@ const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDevelopment = env.nodeEnv !== 'production';
 const localReadPaths = ['/api/auth/me', '/api/health', '/api/dashboard', '/api/classrooms', '/api/notifications', '/api/resources', '/api/meetings', '/api/admin'];
+const localFeaturePaths = ['/api/assignments', '/api/classrooms', '/api/dashboard', '/api/messages', '/api/meetings', '/api/notifications', '/api/quizzes', '/api/resources'];
 
 app.use(helmet());
 app.use(cors({ origin: env.clientUrl, credentials: true }));
@@ -39,7 +40,10 @@ app.use(rateLimit({
   limit: env.nodeEnv === 'production' ? 300 : 5000,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  skip: (req) => isDevelopment && req.method === 'GET' && localReadPaths.some((path) => req.path === path || req.path.startsWith(`${path}/`)),
+  skip: (req) => isDevelopment && (
+    localFeaturePaths.some((path) => req.path === path || req.path.startsWith(`${path}/`))
+    || (req.method === 'GET' && localReadPaths.some((path) => req.path === path || req.path.startsWith(`${path}/`)))
+  ),
   message: { success: false, message: 'Too many requests. Please wait a moment and try again.' },
 }));
 

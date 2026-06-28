@@ -5,7 +5,7 @@ import Resource from '../models/Resource.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { emitNotification, emitToClassroom } from '../services/realtime.service.js';
-import { inferResourceType, storeResourceFile } from '../services/uploads.service.js';
+import { deleteStoredResourceFile, inferResourceType, storeResourceFile } from '../services/uploads.service.js';
 
 const populateResource = (query) => query
   .populate('uploadedBy', 'fullName email role avatarUrl')
@@ -109,6 +109,9 @@ export const deleteResource = asyncHandler(async (req, res) => {
   if (!resource) throw new ApiError(404, 'Resource not found');
   const classroom = await getAccessibleClassroom(req.user, resource.classroom);
   if (!canManageResource(req.user, classroom, resource)) throw new ApiError(403, 'You cannot delete this resource');
+  await deleteStoredResourceFile(resource).catch((error) => {
+    console.warn(`Resource asset cleanup failed for ${resource._id}:`, error.message);
+  });
   resource.status = 'archived';
   await resource.save();
   emitToClassroom(req, classroom._id, 'resource:updated', { resourceId: resource._id, action: 'resource_deleted' });
